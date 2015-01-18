@@ -11,4 +11,5 @@
            #:make-point
            #:make-light
            #:run-tests
+           #:test-trace
            #:rtrace))
