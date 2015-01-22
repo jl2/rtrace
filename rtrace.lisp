@@ -108,10 +108,16 @@
   (location (make-point) :type point)
   (material (make-material) :type material))
 
+(defmethod material (obj)
+  (:documentation "Return an object's material."))
+
+(defgeneric material ((sphere obj))
+  (sphere-material obj))
+
 (defstruct rintersection
   (tval 999999999.0 :type real)
   (intersects nil :type boolean)
-  (sphere nil)
+  (object nil)
   (ray nil)
   (point nil)
   (normal nil))
@@ -119,7 +125,10 @@
 (defun point-on-ray (r tv)
   (pvadd (ray-origin r) (vscale tv (ray-direction r))))
 
-(defun intersects (r s)
+(defgeneric intersects (r obj)
+  (:documentation "Compute an intersection for a ray and object."))
+
+(defmethod intersects (r (sphere s))
   (let* ((oc (psub (ray-origin r) (sphere-location s)))
          (rad (sphere-radius s))
          (lenoc (vlength oc))
@@ -133,7 +142,7 @@
              (make-rintersection
               :tval tv
               :intersects t
-              :sphere s :ray r
+              :object s :ray r
               :normal (normalize (psub (sphere-location s) pt))
               :point pt)))
 
@@ -144,12 +153,12 @@
              (make-rintersection
               :tval tv
               :intersects t
-              :sphere s :ray r
+              :object s :ray r
               :point pt
               :normal (normalize (psub (sphere-location s) pt)))))
           (t
            (make-rintersection :tval 0.0 :intersects nil
-                               :sphere s :ray r )))))
+                               :object s :ray r )))))
 
 (defstruct light
   (location (make-point) :type point)
@@ -160,14 +169,14 @@
   (look-at (make-point) :type point)
   (up (make-rvector :x 0 :y 1 :z 0))
   (aspect (/ 4.0 3.0) :type real)
-  (spheres nil :type list)
+  (objects nil :type list)
   (lights nil :type list))
 
 (defun create-scene ()
   (make-scene))
 
-(defun add-sphere (scn sph)
-  (setf (scene-spheres scn) (cons sph (scene-spheres scn))))
+(defun add-object (scn sph)
+  (setf (scene-objects scn) (cons sph (scene-objects scn))))
 
 (defun add-light (scn lght)
   (setf (scene-lights scn) (cons lght (scene-lights scn))))
@@ -206,7 +215,7 @@
                     (nldir (normalize ldir))
                     (ndl (dot nldir (rintersection-normal isect)))
                     (intensity (clamp ndl)))
-                    (setf rval (cadd rval (cscale intensity (cmul (light-color light) (material-kd (sphere-material (rintersection-sphere isect)))))))
+                    (setf rval (cadd rval (cscale intensity (cmul (light-color light) (material-kd (material (rintersection-object isect)))))))
             ))
           rval)
         
@@ -216,7 +225,7 @@
 
 (defun itrace (scn ry)
   (let ((nearest (make-rintersection :ray ry)))
-    (dolist (sph (scene-spheres scn))
+    (dolist (sph (scene-objects scn))
       (let ((isect (intersects ry sph)))
         (if (and (rintersection-intersects isect) (< (rintersection-tval isect) (rintersection-tval nearest)))
             (setf nearest isect))))
@@ -255,7 +264,7 @@
 (defun test-trace (fname)
   (let ((scn (make-scene :eye-point (make-point :x 16 :y 16 :z 16))))
     (add-light scn (make-light :location (make-point :x 40.0 :y 40.0 :z 40.0)))
-    (add-sphere scn (make-sphere :radius 4.0 :location (make-point :x 8.0)))
-    (add-sphere scn (make-sphere :radius 4.0))
+    (add-object scn (make-sphere :radius 4.0 :location (make-point :x 8.0)))
+    (add-object scn (make-sphere :radius 4.0))
     (rtrace:rtrace scn fname)))
           
