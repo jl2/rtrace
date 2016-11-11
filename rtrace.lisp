@@ -12,6 +12,8 @@
   (y 0.0 :type single-float)
   (z 0.0 :type single-float))
 
+(declaim (optimize (speed 3) (safety 1) (debug 2)))
+
 (defmacro each-point-to-vector (op p1 p2)
   `(make-rvector :x (funcall ,op (point-x ,p1) (point-x ,p2))
                  :y (funcall ,op (point-y ,p1) (point-y ,p2))
@@ -156,7 +158,7 @@
     (cond 
           ((= under 0.0)
            (let* ((tv (the single-float (/ 
-                                         (the single-float (+ (the single-float (- ldoc)) (the single-float (sqrt under))))
+                                         (the single-float (+ (the single-float (- ldoc)) (the single-float (sqrt (the single-float under)))))
                                          (the single-float (* lenl lenl)))))
                  (pt (point-on-ray r tv)))
              (declare (type point pt)
@@ -172,6 +174,8 @@
            (let* ((tv (/ (min (+ (- ldoc) (sqrt under))
                               (- (- ldoc) (sqrt under))) (* lenl lenl)))
                   (pt (point-on-ray r tv)))
+             (declare (type point pt)
+                      (type single-float tv))
              (make-rintersection
               :tval tv
               :intersects t
@@ -220,10 +224,12 @@
                              (normalize vdir)))))
 
 (defun set-pixel (img x y rgb)
-  (let ((r (truncate (* 255.0f0 (rgb-color-r rgb))))
-        (g (truncate (* 255.0f0 (rgb-color-g rgb))))
-        (b (truncate (* 255.0f0 (rgb-color-b rgb)))))
-    (declare (type (unsigned-byte 8) r g b))
+  (let ((r (truncate (the single-float (* 255.0f0 (rgb-color-r rgb)))))
+        (g (truncate (the single-float (* 255.0f0 (rgb-color-g rgb)))))
+        (b (truncate (the single-float (* 255.0f0 (rgb-color-b rgb))))))
+    (declare (type fixnum r g b)
+             (type (simple-array  (unsigned-byte 8) *) img)
+             (type fixnum x y))
     (setf (aref img y x 0) r)
     (setf (aref img y x 1) g)
     (setf (aref img y x 2) b)))
@@ -235,19 +241,24 @@
         (t val)))
 
 (defun shade (scn isect)
+  (declare (type scene scn)
+           (type rintersection isect))
   (let ((ry (rintersection-ray isect)))
-    (declare (ignorable ry))
+    (declare (type ray ry)
+             (ignorable ry))
     (if (rintersection-intersects isect)
         (let ((rval (make-rgb-color :r 0.0f0 :g 0.0f0 :b 0.0f0)))
-          (dolist (light (scene-lights scn))
-            (let*  ((ldir (psub (light-location light) (rintersection-point isect)))
+          (declare (type rgb-color rval))
+          (dolist (lght (scene-lights scn))
+            (declare (type light lght))
+            (let*  ((ldir (psub (light-location lght) (rintersection-point isect)))
                     ;; (ldist (vlength ldir))
                     (nldir (normalize ldir))
                     (ndl (dot nldir (rintersection-normal isect)))
                     (intensity (clamp ndl)))
               (declare (type rvector ldir nldir)
                        (type single-float ndl intensity))
-              (setf rval (cadd rval (cscale intensity (cmul (light-color light) (material-kd (material (rintersection-object isect)))))))))
+              (setf rval (cadd rval (cscale intensity (cmul (light-color lght) (material-kd (material (rintersection-object isect)))))))))
           rval)
         
         (make-rgb-color :r 0.0f0
@@ -255,24 +266,33 @@
                         :b 0.0f0))))
 
 (defun itrace (scn ry)
+  (declare (type scene scn)
+           (type ray ry))
   (let ((nearest (make-rintersection :ray ry)))
+    (declare (type rintersection nearest))
     (dolist (sph (scene-objects scn))
       (let ((isect (intersects ry sph)))
+        (declare (type rintersection isect))
         (if (and (rintersection-intersects isect) (< (rintersection-tval isect) (rintersection-tval nearest)))
             (setf nearest isect))))
-    (shade scn nearest)))
+    (the rgb-color (shade scn nearest))))
 
 (defun rtrace (scn file-name &key (width 800) (height 600))
+  (declare (type scene scn)
+           (type string file-name)
+           (type fixnum width height))
   (let ((img (png:make-image height width 3 8)))
     (dotimes (j (- height 1))
+      (declare (type fixnum j))
       (dotimes (i (- width 1))
+        (declare (type fixnum i))
         (let ((r (compute-eye-ray (scene-eye-point scn)
                                   (scene-look-at scn)
                                   (scene-up scn)
                                   (scene-aspect scn)
                                   i j
                                   width height)))
-
+          (declare (type ray r))
           (set-pixel img i j (itrace scn r)))))
     (with-open-file (output file-name :element-type '(unsigned-byte 8) :direction :output :if-exists :supersede)
                     (png:encode img output))))

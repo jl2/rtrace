@@ -4,7 +4,7 @@
   :description "A simple ray tracer written in Common Lisp."
   :author "Jeremiah LaRocco <jeremiah.larocco@gmail.com>"
   :license "ISC"
-  :depends-on (#:png)
+  :depends-on (#:png #:stl)
   :serial t
   :components ((:file "package")
                (:file "rtrace")))
