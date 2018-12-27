@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:rtrace
-  (:use #:cl #:stl)
+  (:use #:cl #:stl #:3d-vectors)
   (:export #:create-scene
            #:add-sphere
            #:add-light
