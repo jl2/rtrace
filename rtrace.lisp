@@ -204,8 +204,6 @@
   (let ((ilen (/ 1.0 (vlen vect))))
     (vscale ilen vect)))
 
-
-
 (defun make-rgb (r g b)
   (declare (type double-float r g b))
   (let ((rval (make-array '(4) :element-type 'double-float :initial-element 0.0)))
@@ -255,7 +253,6 @@
   (declare (type color color)
            (type double-float value))
   (setf (aref color 3) value))
-
 
 (defun cscale (k c)
   (declare (type double-float k)
@@ -363,22 +360,13 @@
     (declare (type rvector oc)
              (type double-float rad lenoc ldoc lenl)
              (type (double-float 0.0 *) under))
-    (cond 
-          ;; ((and (> 0.0 under) (< under epsilon))
-          ;;  (let* ((tv (/ (+ (- ldoc) (sqrt under) ) (* lenl lenl)))
-          ;;        (pt (point-on-ray r tv)))
-          ;;    (make-rintersection
-          ;;     :tval tv
-          ;;     :intersects t
-          ;;     :object s :ray r
-          ;;     :normal (normalize (psub (sphere-location s) pt))
-          ;;     :point pt)))
-
           ((> under 0.0)
            (let* ((tv (/ (min (+ (- ldoc) (sqrt under))
                               (- (- ldoc) (sqrt under)))
                          (* lenl lenl)))
                   (pt (point-on-ray r tv)))
+             (declare (type point pt)
+                      (type single-float tv))
              (make-rintersection
               :tval tv
               :intersects t
@@ -402,6 +390,7 @@
            (type light lght))
   (setf (scene-lights scn) (cons lght (scene-lights scn))))
 
+
 (defun compute-eye-ray (origin look-at up aspect i j width height)
   (declare (type point origin look-at)
            (type rvector up)
@@ -412,6 +401,7 @@
          (rc (vscale (* aspect (+ -0.5 (/ (coerce i 'double-float) (coerce width 'double-float)  1.0))) right))
          (uc (vscale (+ -0.5 (/ (coerce j 'double-float) (coerce height 'double-float) 1.0)) up))
          (vdir (vadd pdiff (vadd  rc uc))))
+    (declare (type rvector pdiff right rc uc vdir))
     (make-ray :origin origin
               :direction (if (= 0.0 (vlen vdir))
                              vdir
@@ -461,9 +451,10 @@
     (declare (type rintersection nearest))
     (dolist (sph (scene-objects scn))
       (let ((isect (intersects ry sph)))
+        (declare (type rintersection isect))
         (if (and (rintersection-intersects isect) (< (rintersection-tval isect) (rintersection-tval nearest)))
             (setf nearest isect))))
-    (shade scn nearest)))
+    (the rgb-color (shade scn nearest))))
 
 (defun rtrace (scn file-name &key (width 800) (height 600))
   (declare (type fixnum width height)
@@ -481,7 +472,7 @@
                                   (scene-aspect scn)
                                   i j
                                   width height)))
-
+          (declare (type ray r))
           (set-pixel img i j (cclamp (itrace scn r))))))
     (with-open-file (output file-name :element-type '(unsigned-byte 8) :direction :output :if-exists :supersede)
                     (png:encode img output))))
@@ -492,7 +483,6 @@
         (v3 (make-rvector 10.0 10.0 10.0))
         (p1 (make-point 1.0 1.0 1.0))
         (p2 (make-point 0.0 0.0 0.0)))
-    
     (format t "~a . ~a = ~a~%" v1 v2 (dot v1 v2))
     (format t "~a x ~a = ~a~%" v1 v2 (cross v1 v2))
     (format t "~a + ~a = ~a~%" v1 v2 (vadd v1 v2))
