@@ -4,7 +4,6 @@
 
 ;; (declaim (optimize (speed 3) (safety 1) (debug 0)))
 (declaim (optimize speed))
-
 (deftype point ()
   '(simple-array double-float (3)))
 
@@ -360,22 +359,24 @@
     (declare (type rvector oc)
              (type double-float rad lenoc ldoc lenl)
              (type (double-float 0.0 *) under))
-          ((> under 0.0)
-           (let* ((tv (/ (min (+ (- ldoc) (sqrt under))
-                              (- (- ldoc) (sqrt under)))
-                         (* lenl lenl)))
-                  (pt (point-on-ray r tv)))
-             (declare (type point pt)
-                      (type single-float tv))
-             (make-rintersection
-              :tval tv
-              :intersects t
-              :object s :ray r
-              :point pt
-              :normal (normalize (psub (sphere-location s) pt)))))
-          (t
-           (make-rintersection :tval 0.0 :intersects nil
-                               :object s :ray r )))))
+    
+    (cond 
+      ((> under 0.0)
+       (let* ((tv (/ (min (+ (- ldoc) (sqrt under))
+                          (- (- ldoc) (sqrt under)))
+                     (* lenl lenl)))
+              (pt (point-on-ray r tv)))
+         (declare (type point pt)
+                  (type double-float tv))
+         (make-rintersection
+          :tval tv
+          :intersects t
+          :object s :ray r
+          :point pt
+          :normal (normalize (psub (sphere-location s) pt)))))
+      (t
+       (make-rintersection :tval 0.0 :intersects nil
+                           :object s :ray r )))))
 
 (defun create-scene ()
   (make-scene))
