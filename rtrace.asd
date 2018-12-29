@@ -2,7 +2,7 @@
 
 (asdf:defsystem #:rtrace
   :description "A simple ray tracer written in Common Lisp."
-  :author "Jeremiah LaRocco <jeremiah.larocco@gmail.com>"
+  :author "Jeremiah LaRocco <jeremiah_larocco@fastmail.com>"
   :license "ISC (BSD like)"
   :depends-on (#:png)
   :serial t
